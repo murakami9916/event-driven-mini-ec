@@ -8,7 +8,7 @@ PostgreSQL を正本にし、Transactional Outbox、Redis Streams、冪等 worke
 ## アーキテクチャ構成
 
 ```mermaid
-%%{init: {"theme": "base", "themeCSS": "svg { background-color: #ffffff !important; }", "themeVariables": {"background": "#ffffff", "darkMode": false, "mainBkg": "#ffffff", "clusterBkg": "#ffffff", "clusterBorder": "#d0d7de", "lineColor": "#64748b", "textColor": "#0f172a", "edgeLabelBackground": "#ffffff"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #ffffff !important; }", "flowchart": {"diagramPadding": 0}, "themeVariables": {"background": "#ffffff", "darkMode": false, "mainBkg": "#ffffff", "clusterBkg": "#ffffff", "clusterBorder": "#d0d7de", "lineColor": "#64748b", "textColor": "#0f172a", "edgeLabelBackground": "#ffffff"}}}%%
 flowchart TB
     subgraph Canvas[" "]
         direction TB
