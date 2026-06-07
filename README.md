@@ -8,24 +8,58 @@ PostgreSQL を正本にし、Transactional Outbox、Redis Streams、冪等 worke
 ## アーキテクチャ構成
 
 ```mermaid
-flowchart LR
-    Client["クライアント / ブラウザ"] --> API["FastAPI API"]
+flowchart TB
+    Client["クライアント<br/>ブラウザ / API Client"]
 
-    API --> PG["PostgreSQL<br/>正本DB + event_log"]
+    subgraph ApiLayer["API Layer"]
+        API["FastAPI<br/>注文API"]
+    end
 
-    PG --> Relay["Outbox Relay<br/>未配送イベントを配信"]
-    Relay --> Redis["Redis Streams<br/>イベントストリーム"]
+    subgraph SourceOfTruth["Source of Truth"]
+        PG[(PostgreSQL<br/>orders / inventory / event_log)]
+    end
 
-    Redis --> Inventory["在庫 Worker"]
-    Redis --> Shipping["出荷 Worker"]
-    Redis --> Projection["集計 Worker"]
+    subgraph EventDelivery["Reliable Event Delivery"]
+        Relay["Outbox Relay<br/>未配送イベントを再送"]
+        Redis[(Redis Streams<br/>イベントストリーム)]
+    end
 
-    Inventory --> PG
-    Shipping --> PG
-    Projection --> PG
+    subgraph Consumers["Idempotent Consumers"]
+        Inventory["在庫 Worker<br/>在庫予約"]
+        Shipping["出荷 Worker<br/>出荷作成"]
+        Projection["集計 Worker<br/>read model 更新"]
+    end
 
-    Toxi["Toxiproxy<br/>障害注入"] -.-> PG
-    Toxi -.-> Redis
+    subgraph FaultInjection["Fault Injection"]
+        Toxi["Toxiproxy<br/>依存先の切断 / 復旧"]
+    end
+
+    Client -->|"POST /orders"| API
+    API -->|"同一トランザクションで保存"| PG
+    PG -->|"未配送イベント"| Relay
+    Relay -->|"publish / retry"| Redis
+    Redis -->|"OrderCreated"| Inventory
+    Redis -->|"InventoryReserved"| Shipping
+    Redis -->|"ShipmentCreated"| Projection
+    Inventory -->|"冪等 write"| PG
+    Shipping -->|"冪等 write"| PG
+    Projection -->|"冪等 write"| PG
+    Toxi -.->|"PostgreSQL 障害"| PG
+    Toxi -.->|"Redis 障害"| Redis
+
+    class Client actor
+    class API api
+    class PG store
+    class Relay,Redis delivery
+    class Inventory,Shipping,Projection worker
+    class Toxi fault
+
+    classDef actor fill:#fff7ed,stroke:#fb923c,stroke-width:1px,color:#7c2d12;
+    classDef api fill:#eff6ff,stroke:#60a5fa,stroke-width:1px,color:#1e3a8a;
+    classDef store fill:#ecfdf5,stroke:#34d399,stroke-width:1px,color:#064e3b;
+    classDef delivery fill:#f5f3ff,stroke:#a78bfa,stroke-width:1px,color:#4c1d95;
+    classDef worker fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,color:#0f172a;
+    classDef fault fill:#fef2f2,stroke:#f87171,stroke-width:1px,color:#7f1d1d;
 ```
 
 API は PostgreSQL に注文とイベントを同一トランザクションで保存し、
