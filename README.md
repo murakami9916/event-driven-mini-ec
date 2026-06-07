@@ -8,45 +8,48 @@ PostgreSQL を正本にし、Transactional Outbox、Redis Streams、冪等 worke
 ## アーキテクチャ構成
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "darkMode": false, "mainBkg": "#ffffff", "clusterBkg": "#ffffff", "clusterBorder": "#d0d7de", "lineColor": "#64748b", "textColor": "#0f172a", "edgeLabelBackground": "#ffffff"}}}%%
+%%{init: {"theme": "base", "themeCSS": "svg { background-color: #ffffff !important; }", "themeVariables": {"background": "#ffffff", "darkMode": false, "mainBkg": "#ffffff", "clusterBkg": "#ffffff", "clusterBorder": "#d0d7de", "lineColor": "#64748b", "textColor": "#0f172a", "edgeLabelBackground": "#ffffff"}}}%%
 flowchart TB
-    Client["クライアント<br/>ブラウザ / API Client"]
+    subgraph Canvas[" "]
+        direction TB
+        Client["クライアント<br/>ブラウザ / API Client"]
 
-    subgraph ApiLayer["API Layer"]
-        API["FastAPI<br/>注文API"]
+        subgraph ApiLayer["API Layer"]
+            API["FastAPI<br/>注文API"]
+        end
+
+        subgraph SourceOfTruth["Source of Truth"]
+            PG[(PostgreSQL<br/>orders / inventory / event_log)]
+        end
+
+        subgraph EventDelivery["Reliable Event Delivery"]
+            Relay["Outbox Relay<br/>未配送イベントを再送"]
+            Redis[(Redis Streams<br/>イベントストリーム)]
+        end
+
+        subgraph Consumers["Idempotent Consumers"]
+            Inventory["在庫 Worker<br/>在庫予約"]
+            Shipping["出荷 Worker<br/>出荷作成"]
+            Projection["集計 Worker<br/>read model 更新"]
+        end
+
+        subgraph FaultInjection["Fault Injection"]
+            Toxi["Toxiproxy<br/>依存先の切断 / 復旧"]
+        end
+
+        Client -->|"POST /orders"| API
+        API -->|"同一トランザクションで保存"| PG
+        PG -->|"未配送イベント"| Relay
+        Relay -->|"publish / retry"| Redis
+        Redis -->|"OrderCreated"| Inventory
+        Redis -->|"InventoryReserved"| Shipping
+        Redis -->|"ShipmentCreated"| Projection
+        Inventory -->|"冪等 write"| PG
+        Shipping -->|"冪等 write"| PG
+        Projection -->|"冪等 write"| PG
+        Toxi -.->|"PostgreSQL 障害"| PG
+        Toxi -.->|"Redis 障害"| Redis
     end
-
-    subgraph SourceOfTruth["Source of Truth"]
-        PG[(PostgreSQL<br/>orders / inventory / event_log)]
-    end
-
-    subgraph EventDelivery["Reliable Event Delivery"]
-        Relay["Outbox Relay<br/>未配送イベントを再送"]
-        Redis[(Redis Streams<br/>イベントストリーム)]
-    end
-
-    subgraph Consumers["Idempotent Consumers"]
-        Inventory["在庫 Worker<br/>在庫予約"]
-        Shipping["出荷 Worker<br/>出荷作成"]
-        Projection["集計 Worker<br/>read model 更新"]
-    end
-
-    subgraph FaultInjection["Fault Injection"]
-        Toxi["Toxiproxy<br/>依存先の切断 / 復旧"]
-    end
-
-    Client -->|"POST /orders"| API
-    API -->|"同一トランザクションで保存"| PG
-    PG -->|"未配送イベント"| Relay
-    Relay -->|"publish / retry"| Redis
-    Redis -->|"OrderCreated"| Inventory
-    Redis -->|"InventoryReserved"| Shipping
-    Redis -->|"ShipmentCreated"| Projection
-    Inventory -->|"冪等 write"| PG
-    Shipping -->|"冪等 write"| PG
-    Projection -->|"冪等 write"| PG
-    Toxi -.->|"PostgreSQL 障害"| PG
-    Toxi -.->|"Redis 障害"| Redis
 
     class Client actor
     class API api
@@ -61,6 +64,7 @@ flowchart TB
     classDef delivery fill:#f5f3ff,stroke:#a78bfa,stroke-width:1px,color:#4c1d95;
     classDef worker fill:#f8fafc,stroke:#94a3b8,stroke-width:1px,color:#0f172a;
     classDef fault fill:#fef2f2,stroke:#f87171,stroke-width:1px,color:#7f1d1d;
+    style Canvas fill:#ffffff,stroke:#ffffff,color:#ffffff;
 ```
 
 API は PostgreSQL に注文とイベントを同一トランザクションで保存し、
