@@ -26,7 +26,9 @@ def build_consumer(role: str) -> RedisStreamConsumer:
     settings = get_settings()
     init_database(settings.database_url)
     session_factory = create_session_factory(settings.database_url)
-    uow_factory = lambda: SqlAlchemyUnitOfWork(session_factory)
+
+    def uow_factory() -> SqlAlchemyUnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory)
 
     if role == "inventory":
         use_case = ReserveInventoryUseCase(uow_factory)
@@ -61,4 +63,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

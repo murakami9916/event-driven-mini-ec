@@ -27,6 +27,7 @@ include = ["app*"]
 dev = [
     "httpx>=0.27.0",
     "pytest>=8.2.0",
+    "ruff>=0.15.16",
 ]
 
 [tool.pytest.ini_options]

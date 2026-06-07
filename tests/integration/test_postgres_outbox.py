@@ -22,7 +22,9 @@ def test_create_order_and_mark_outbox_event_published() -> None:
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     session_factory = create_session_factory(database_url)
-    uow_factory = lambda: SqlAlchemyUnitOfWork(session_factory)
+
+    def uow_factory() -> SqlAlchemyUnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory)
 
     CreateOrderUseCase(uow_factory).execute(
         CreateOrderCommand("key-1", [OrderLineInput("SKU-001", 1)])
@@ -36,4 +38,3 @@ def test_create_order_and_mark_outbox_event_published() -> None:
 
     with uow_factory() as uow:
         assert uow.events.list_unpublished(10) == []
-

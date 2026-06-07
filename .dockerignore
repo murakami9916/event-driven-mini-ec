@@ -1,9 +1,10 @@
 .DS_Store
+.git
+.github
 .pytest_cache
+.ruff_cache
 .venv
 __pycache__
 *.pyc
 *.pyo
 *.egg-info
-uv.lock
-

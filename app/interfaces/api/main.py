@@ -38,7 +38,10 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 def create_app() -> FastAPI:
     settings = get_settings()
     session_factory = create_session_factory(settings.database_url)
-    uow_factory = lambda: SqlAlchemyUnitOfWork(session_factory)
+
+    def uow_factory() -> SqlAlchemyUnitOfWork:
+        return SqlAlchemyUnitOfWork(session_factory)
+
     publisher = RedisStreamPublisher(settings.redis_url, settings.event_stream)
     toxiproxy = ToxiproxyClient(settings.toxiproxy_url)
 
@@ -159,4 +162,3 @@ def _http_exception_response(status_code: int, detail: str):
     from fastapi.responses import JSONResponse
 
     return JSONResponse(status_code=status_code, content={"detail": detail})
-
