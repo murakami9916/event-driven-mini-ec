@@ -8,6 +8,7 @@ PostgreSQL を正本にし、Transactional Outbox、Redis Streams、冪等 worke
 ## アーキテクチャ構成
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "darkMode": false, "mainBkg": "#ffffff", "clusterBkg": "#ffffff", "clusterBorder": "#d0d7de", "lineColor": "#64748b", "textColor": "#0f172a", "edgeLabelBackground": "#ffffff"}}}%%
 flowchart TB
     Client["クライアント<br/>ブラウザ / API Client"]
 
