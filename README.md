@@ -1,9 +1,37 @@
 # Mini EC
 
-障害に耐えるイベント駆動 EC の最小実装です。
+## 概要｜障害に耐えるイベント駆動 EC の最小実装です。
 
 PostgreSQL を正本にし、Transactional Outbox、Redis Streams、冪等 worker で
 「注文作成 → 在庫予約 → 出荷作成 → 集計更新」を最終的に整合させます。
+
+## アーキテクチャ構成
+
+```mermaid
+flowchart LR
+    Client["クライアント / ブラウザ"] --> API["FastAPI API"]
+
+    API --> PG["PostgreSQL<br/>正本DB + event_log"]
+
+    PG --> Relay["Outbox Relay<br/>未配送イベントを配信"]
+    Relay --> Redis["Redis Streams<br/>イベントストリーム"]
+
+    Redis --> Inventory["在庫 Worker"]
+    Redis --> Shipping["出荷 Worker"]
+    Redis --> Projection["集計 Worker"]
+
+    Inventory --> PG
+    Shipping --> PG
+    Projection --> PG
+
+    Toxi["Toxiproxy<br/>障害注入"] -.-> PG
+    Toxi -.-> Redis
+```
+
+API は PostgreSQL に注文とイベントを同一トランザクションで保存し、
+Outbox Relay が `event_log` の未配送イベントを Redis Streams に配信します。
+各 Worker はイベントを購読し、在庫・出荷・集計を最終的に整合させます。
+
 
 ## このリポジトリで見せたいこと
 
@@ -36,19 +64,6 @@ TOXIPROXY_URL=http://localhost:18474 \
 uv run pytest tests/fault/test_fault_scenarios.py
 ```
 
-## 処理フロー
-
-```text
-POST /orders
-  -> PostgreSQL: orders + event_log
-  -> outbox-relay
-  -> Redis Streams
-  -> inventory-worker
-  -> shipping-worker
-  -> projection-worker
-  -> read model
-```
-
 ## 技術スタック
 
 - API: FastAPI
@@ -59,15 +74,15 @@ POST /orders
 - Test: pytest
 - Runtime: Docker Compose / uv
 
-## 起動
+## 実装の見どころ
 
-```bash
-docker compose up --build
-```
-
-UI:
-
-<http://localhost:18000/>
+- `app/domain`: フレームワーク非依存の業務ルール
+- `app/application`: use case と port
+- `app/infrastructure/outbox`: outbox relay
+- `app/infrastructure/redis`: Redis Streams publisher / consumer
+- `tests/unit`: domain / application の振る舞い
+- `tests/integration`: PostgreSQL と outbox 永続化
+- `tests/fault`: Redis / PostgreSQL 障害と復旧
 
 ## テスト
 
@@ -95,13 +110,3 @@ uv run pytest
 `POST /orders` は `Idempotency-Key` ヘッダー必須です。
 同じ key と同じ payload は同じ結果を返し、同じ key で payload が違う場合は
 `409 Conflict` を返します。
-
-## 実装の見どころ
-
-- `app/domain`: フレームワーク非依存の業務ルール
-- `app/application`: use case と port
-- `app/infrastructure/outbox`: outbox relay
-- `app/infrastructure/redis`: Redis Streams publisher / consumer
-- `tests/unit`: domain / application の振る舞い
-- `tests/integration`: PostgreSQL と outbox 永続化
-- `tests/fault`: Redis / PostgreSQL 障害と復旧
