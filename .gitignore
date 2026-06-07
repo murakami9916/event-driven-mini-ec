@@ -77,3 +77,7 @@ pnpm-debug.log*
 Thumbs.db
 ehthumbs.db
 plan.md
+
+.github/dependabot.yml
+.github/workflows/fault-tests.yml
+.github/workflows/release.yml

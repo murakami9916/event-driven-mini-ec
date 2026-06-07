@@ -276,6 +276,22 @@ DB なしで実行できるテスト:
 uv run pytest
 ```
 
+カバレッジを出す場合:
+
+```bash
+uv run pytest --cov=app --cov-report=term-missing
+```
+
+HTML レポートも出す場合:
+
+```bash
+uv run pytest --cov=app --cov-report=term-missing --cov-report=html
+```
+
+HTML は `htmlcov/index.html` に出力されます。
+カバレッジは「テスト実行時に app 配下のどの行・分岐が通ったか」を見る指標です。
+高いほど安心材料にはなりますが、テストの品質そのものを保証する数字ではありません。
+
 `TEST_DATABASE_URL` を指定しない場合、PostgreSQL integration test と fault test は skip されます。
 
 PostgreSQL integration test も含める場合:
