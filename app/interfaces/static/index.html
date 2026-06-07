@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mini EC</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <h1>Mini EC</h1>
+          <p>Orders, inventory, outbox events, workers, and projections.</p>
+        </div>
+        <button id="refresh">Refresh</button>
+      </section>
+
+      <section class="grid">
+        <form id="inventory-form" class="panel">
+          <h2>Inventory</h2>
+          <label>
+            SKU
+            <input id="inventory-sku" name="sku" value="SKU-001" required />
+          </label>
+          <label>
+            Delta
+            <input id="inventory-delta" name="delta" type="number" value="10" required />
+          </label>
+          <button type="submit">Adjust</button>
+          <pre id="inventory-output"></pre>
+        </form>
+
+        <form id="order-form" class="panel">
+          <h2>Order</h2>
+          <label>
+            Idempotency Key
+            <input id="idempotency-key" value="demo-key-1" required />
+          </label>
+          <label>
+            SKU
+            <input id="order-sku" value="SKU-001" required />
+          </label>
+          <label>
+            Quantity
+            <input id="order-quantity" type="number" value="1" min="1" required />
+          </label>
+          <button type="submit">Create Order</button>
+          <pre id="order-output"></pre>
+        </form>
+
+        <section class="panel">
+          <h2>Order Lookup</h2>
+          <label>
+            Order ID
+            <input id="lookup-order-id" />
+          </label>
+          <button id="lookup-order" type="button">Lookup</button>
+          <pre id="lookup-output"></pre>
+        </section>
+
+        <section class="panel">
+          <h2>Projection</h2>
+          <div id="summary" class="summary">
+            <span>orders: 0</span>
+            <span>reserved: 0</span>
+            <span>rejected: 0</span>
+            <span>shipments: 0</span>
+          </div>
+          <button id="rebuild" type="button">Rebuild</button>
+          <pre id="summary-output"></pre>
+        </section>
+
+        <section class="panel wide">
+          <h2>Faults</h2>
+          <div class="fault-grid">
+            <button data-target="postgres" data-action="cut">Cut PostgreSQL</button>
+            <button data-target="postgres" data-action="restore">Restore PostgreSQL</button>
+            <button data-target="redis" data-action="cut">Cut Redis</button>
+            <button data-target="redis" data-action="restore">Restore Redis</button>
+          </div>
+          <pre id="fault-output"></pre>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

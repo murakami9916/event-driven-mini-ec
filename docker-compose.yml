@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mini_ec
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mini_ec"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    command: ["-host", "0.0.0.0", "-config", "/etc/toxiproxy/toxiproxy.json"]
+    volumes:
+      - ./scripts/toxiproxy.json:/etc/toxiproxy/toxiproxy.json:ro
+    ports:
+      - "18474:8474"
+      - "15432:15432"
+      - "16379:16379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:15432/mini_ec
+      REDIS_URL: redis://toxiproxy:16379/0
+      TOXIPROXY_URL: http://toxiproxy:8474
+      EVENT_STREAM: domain-events
+    ports:
+      - "18000:8000"
+    depends_on:
+      toxiproxy:
+        condition: service_started
+
+  outbox-relay:
+    build: .
+    command: ["python", "-m", "app.infrastructure.outbox.relay"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:15432/mini_ec
+      REDIS_URL: redis://toxiproxy:16379/0
+      EVENT_STREAM: domain-events
+    depends_on:
+      api:
+        condition: service_started
+
+  inventory-worker:
+    build: .
+    command: ["python", "-m", "app.interfaces.workers.runner", "inventory"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:15432/mini_ec
+      REDIS_URL: redis://toxiproxy:16379/0
+      EVENT_STREAM: domain-events
+    depends_on:
+      api:
+        condition: service_started
+
+  shipping-worker:
+    build: .
+    command: ["python", "-m", "app.interfaces.workers.runner", "shipping"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:15432/mini_ec
+      REDIS_URL: redis://toxiproxy:16379/0
+      EVENT_STREAM: domain-events
+    depends_on:
+      api:
+        condition: service_started
+
+  projection-worker:
+    build: .
+    command: ["python", "-m", "app.interfaces.workers.runner", "projection"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@toxiproxy:15432/mini_ec
+      REDIS_URL: redis://toxiproxy:16379/0
+      EVENT_STREAM: domain-events
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  postgres-data:

@@ -1,0 +1,2 @@
+"""Framework-free domain model."""
+

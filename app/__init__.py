@@ -1,0 +1,2 @@
+"""Mini EC application package."""
+

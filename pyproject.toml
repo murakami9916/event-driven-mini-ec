@@ -1,0 +1,39 @@
+[project]
+name = "mini-ec"
+version = "0.1.0"
+description = "Event-driven mini EC platform with transactional outbox and idempotent consumers."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "psycopg[binary]>=3.2.0",
+    "pydantic>=2.8.0",
+    "redis>=5.0.0",
+    "sqlalchemy>=2.0.30",
+    "uvicorn[standard]>=0.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.setuptools.package-data]
+"app.interfaces.static" = ["*.html", "*.css", "*.js"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27.0",
+    "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
